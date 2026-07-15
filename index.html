@@ -569,61 +569,309 @@
         }
 
         @media (max-width: 720px) {
-            .app {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-                flex-direction: row;
-                flex-wrap: wrap;
-                padding: 8px 12px;
-                justify-content: center;
-                overflow-y: visible;
-            }
-            .sidebar h1 {
-                width: 100%;
-                margin-bottom: 6px;
-                font-size: 18px;
-                border-bottom: none;
-                padding-bottom: 4px;
-            }
-            .sidebar .nav-item {
-                padding: 8px 16px;
-                font-size: 14px;
-                border-left: none;
-                border-bottom: 3px solid transparent;
-            }
-            .sidebar .nav-item.active {
-                border-left: none;
-                border-bottom-color: #7fc9ff;
-            }
-            .main {
-                padding: 16px;
-            }
-            #map-home,
-            #map-suppliers {
-                height: 260px;
-            }
-            .legal-steps {
-                flex-direction: column;
-            }
-            .legal-contact {
-                flex-direction: column;
-                text-align: center;
-            }
-            .modal-window {
-                padding: 28px 20px 24px;
-            }
-            .sanctions-table {
-                font-size: 12px;
-            }
-            .sanctions-table th,
-            .sanctions-table td {
-                padding: 6px 8px;
-            }
-        }
+    .app {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        justify-content: center;
+        overflow-y: visible;
+        top: 0;
+    }
+    .sidebar h1 {
+        width: 100%;
+        margin-bottom: 4px;
+        font-size: 16px;
+        border-bottom: none;
+        padding-bottom: 4px;
+        text-align: center;
+    }
+    .sidebar .nav-item {
+        padding: 6px 12px;
+        font-size: 13px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        flex-shrink: 0;
+    }
+    .sidebar .nav-item.active {
+        border-left: none;
+        border-bottom-color: #7fc9ff;
+    }
+    .main {
+        padding: 12px 14px;
+        min-height: auto;
+    }
+    .page h1 {
+        font-size: 22px;
+    }
+    .page h2 {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+    .page p {
+        font-size: 14px;
+    }
+
+    #map-home,
+    #map-suppliers {
+        height: 220px;
+        margin: 10px 0;
+    }
+
+    /* --- Статистика --- */
+    .stats-grid {
+        gap: 8px;
+        margin: 8px 0;
+    }
+    .stats-grid .stat-card {
+        padding: 10px 12px;
+        min-width: 80px;
+        flex: 1 1 calc(50% - 8px);
+    }
+    .stats-grid .stat-card .number {
+        font-size: 20px;
+    }
+    .stats-grid .stat-card .label {
+        font-size: 11px;
+    }
+
+    /* --- Таблица санкций --- */
+    .sanctions-table {
+        font-size: 11px;
+    }
+    .sanctions-table th,
+    .sanctions-table td {
+        padding: 4px 6px;
+        word-break: break-word;
+    }
+    .sanctions-table .badge {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+
+    .accordion-header {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+    .accordion-body.open {
+        padding: 8px 14px 12px;
+        max-height: 3000px;
+    }
+    .accordion-body ul li a {
+        font-size: 13px;
+    }
+
+    .accordion-body div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+        gap: 2px 0 !important;
+    }
+    .accordion-body div[style*="grid-template-columns: 1fr 1fr"] div {
+        padding: 2px 0 !important;
+    }
+    .accordion-body div[style*="grid-template-columns: 1fr 1fr"] div a {
+        font-size: 13px !important;
+        padding: 2px 0 !important;
+    }
+
+    .accordion-body #docContracts > div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+    .accordion-body #docContracts > div[style*="grid-template-columns: 1fr 1fr"] > div {
+        padding: 10px !important;
+        min-width: auto !important;
+    }
+    .accordion-body #docContracts > div[style*="grid-template-columns: 1fr 1fr"] h4 {
+        font-size: 13px !important;
+        margin-bottom: 4px !important;
+    }
+    .accordion-body #docContracts > div[style*="grid-template-columns: 1fr 1fr"] a {
+        font-size: 12px !important;
+        padding: 4px 8px !important;
+    }
+
+    .legal-steps {
+        flex-direction: column;
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .legal-step {
+        min-width: auto;
+        padding: 14px 16px;
+    }
+    .legal-step .step-number {
+        width: 32px;
+        height: 32px;
+        line-height: 32px;
+        font-size: 14px;
+    }
+    .legal-step h4 {
+        font-size: 14px;
+    }
+    .legal-step p {
+        font-size: 13px;
+    }
+    .legal-highlight {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
+    .legal-contact {
+        flex-direction: column;
+        text-align: center;
+        padding: 16px 18px;
+        gap: 10px;
+    }
+    .legal-contact p {
+        font-size: 14px;
+    }
+    .btn-primary {
+        padding: 10px 24px;
+        font-size: 14px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .legal-steps + div[style*="display:flex"] {
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: center !important;
+    }
+    .legal-steps + div[style*="display:flex"] > div {
+        min-width: auto !important;
+        width: 100% !important;
+        max-width: 280px !important;
+    }
+    .legal-steps + div[style*="display:flex"] > div[style*="font-size:32px"] {
+        font-size: 24px !important;
+        transform: rotate(90deg);
+        padding: 2px 0 !important;
+    }
+
+    .search-box {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin: 10px 0;
+    }
+    .search-box input,
+    .search-box select {
+        min-width: auto !important;
+        width: 100% !important;
+        font-size: 14px !important;
+        padding: 8px 12px !important;
+    }
+    .search-box button {
+        padding: 8px 16px !important;
+        font-size: 14px !important;
+        width: 100% !important;
+        text-align: center;
+    }
+
+    #searchResults {
+        margin-top: 8px;
+    }
+    #searchResults .supplier-card {
+        padding: 10px 14px;
+        margin: 6px 0;
+    }
+    #searchResults .supplier-card h4 {
+        font-size: 14px;
+    }
+    #searchResults .supplier-card .meta {
+        font-size: 12px;
+    }
+    #searchResults .badge {
+        font-size: 10px !important;
+        padding: 2px 8px !important;
+    }
+    #searchResults .tag {
+        font-size: 11px !important;
+        padding: 2px 8px !important;
+    }
+
+    #searchResults #productDetail {
+        padding: 8px 10px !important;
+    }
+    #searchResults #productDetail h4 {
+        font-size: 16px !important;
+    }
+    #searchResults #productDetail p {
+        font-size: 13px !important;
+        margin: 2px 0 !important;
+    }
+    #searchResults #productDetail .supplier-card {
+        padding: 8px 12px !important;
+        margin: 4px 0 !important;
+    }
+    #searchResults #productDetail .supplier-card h4 {
+        font-size: 13px !important;
+    }
+
+    .faq-question {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+    .faq-answer.open {
+        padding: 8px 14px 12px;
+    }
+    .faq-answer p {
+        font-size: 14px;
+    }
+
+    .modal-window {
+        padding: 20px 16px 20px;
+        max-width: 95%;
+    }
+    .modal-window h2 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+    .modal-contact-item {
+        font-size: 14px;
+        padding: 6px 0;
+        gap: 10px;
+    }
+    .modal-contact-item .icon {
+        font-size: 18px;
+        width: 28px;
+    }
+    .modal-note {
+        font-size: 13px;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    .modal-close {
+        font-size: 22px;
+        top: 8px;
+        right: 12px;
+    }
+
+    .footer {
+        padding: 10px 0 6px;
+        font-size: 12px;
+    }
+
+    .supplier-card {
+        padding: 10px 14px;
+        margin: 6px 0;
+    }
+    .supplier-card h4 {
+        font-size: 14px;
+    }
+    .supplier-card .meta {
+        font-size: 12px;
+    }
+    .tag {
+        font-size: 11px !important;
+        padding: 2px 8px !important;
+    }
+}
     </style>
 </head>
 <body>
