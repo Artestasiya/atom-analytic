@@ -568,7 +568,7 @@
             color: #1e7e34;
         }
 
-        @media (max-width: 720px) {
+      @media (max-width: 720px) {
     .app {
         flex-direction: column;
     }
@@ -617,9 +617,10 @@
         font-size: 14px;
     }
 
+    /* --- КАРТЫ УВЕЛИЧЕНЫ ДО 350px --- */
     #map-home,
     #map-suppliers {
-        height: 220px;
+        height: 350px;
         margin: 10px 0;
     }
 
@@ -629,15 +630,15 @@
         margin: 8px 0;
     }
     .stats-grid .stat-card {
-        padding: 10px 12px;
+        padding: 12px 14px;
         min-width: 80px;
         flex: 1 1 calc(50% - 8px);
     }
     .stats-grid .stat-card .number {
-        font-size: 20px;
+        font-size: 24px;
     }
     .stats-grid .stat-card .label {
-        font-size: 11px;
+        font-size: 12px;
     }
 
     /* --- Таблица санкций --- */
@@ -654,6 +655,7 @@
         padding: 2px 8px;
     }
 
+    /* --- Аккордеон --- */
     .accordion-header {
         padding: 10px 14px;
         font-size: 14px;
@@ -666,6 +668,7 @@
         font-size: 13px;
     }
 
+    /* --- Документация (список ссылок) --- */
     .accordion-body div[style*="grid-template-columns: 1fr 1fr"] {
         grid-template-columns: 1fr !important;
         gap: 2px 0 !important;
@@ -678,6 +681,7 @@
         padding: 2px 0 !important;
     }
 
+    /* --- Договоры (карточки в 2 колонки) --- */
     .accordion-body #docContracts > div[style*="grid-template-columns: 1fr 1fr"] {
         grid-template-columns: 1fr 1fr !important;
         gap: 10px !important;
@@ -695,6 +699,7 @@
         padding: 4px 8px !important;
     }
 
+    /* --- Юридическая поддержка --- */
     .legal-steps {
         flex-direction: column;
         gap: 12px;
@@ -736,6 +741,7 @@
         text-align: center;
     }
 
+    /* --- Блок "Как это работает" (стрелки между блоками) --- */
     .legal-steps + div[style*="display:flex"] {
         flex-direction: column !important;
         gap: 8px !important;
@@ -752,6 +758,7 @@
         padding: 2px 0 !important;
     }
 
+    /* --- Поиск товара --- */
     .search-box {
         flex-direction: column;
         align-items: stretch;
@@ -772,6 +779,7 @@
         text-align: center;
     }
 
+    /* --- Результаты поиска --- */
     #searchResults {
         margin-top: 8px;
     }
@@ -794,6 +802,7 @@
         padding: 2px 8px !important;
     }
 
+    /* --- Детали товара --- */
     #searchResults #productDetail {
         padding: 8px 10px !important;
     }
@@ -812,6 +821,7 @@
         font-size: 13px !important;
     }
 
+    /* --- FAQ --- */
     .faq-question {
         padding: 10px 14px;
         font-size: 14px;
@@ -823,6 +833,7 @@
         font-size: 14px;
     }
 
+    /* --- Модальное окно --- */
     .modal-window {
         padding: 20px 16px 20px;
         max-width: 95%;
@@ -852,11 +863,13 @@
         right: 12px;
     }
 
+    /* --- Футер --- */
     .footer {
         padding: 10px 0 6px;
         font-size: 12px;
     }
 
+    /* --- Карточки поставщиков --- */
     .supplier-card {
         padding: 10px 14px;
         margin: 6px 0;
