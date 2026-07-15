@@ -1,0 +1,2584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Атомный аналитик — прототип</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .app {
+            display: flex;
+            flex: 1;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 240px;
+            background: #0b2b4a;
+            color: #fff;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+        }
+        .sidebar h1 {
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #2a4b6a;
+            padding-bottom: 15px;
+        }
+        .sidebar h1 span {
+            font-weight: 600;
+            color: #7fc9ff;
+        }
+        .sidebar .nav-item {
+            padding: 14px 24px;
+            cursor: pointer;
+            transition: 0.2s;
+            border-left: 4px solid transparent;
+            font-size: 16px;
+        }
+        .sidebar .nav-item:hover {
+            background: #1a3f5f;
+        }
+        .sidebar .nav-item.active {
+            background: #1a3f5f;
+            border-left-color: #7fc9ff;
+        }
+        .main {
+            flex: 1;
+            padding: 24px 32px;
+            background: #f4f7fb;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease;
+            flex-direction: column;
+            flex: 1;
+            min-height: 100%;
+        }
+        .page.active {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        @keyframes fadeIn {
+            0% {
+                opacity: 0.4;
+                transform: translateY(6px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .page h2 {
+            font-size: 28px;
+            color: #0b2b4a;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #cbd8e6;
+            padding-bottom: 8px;
+        }
+        .page h1 {
+            font-size: 32px;
+            color: #0b2b4a;
+            margin-bottom: 16px;
+        }
+        .page p,
+        .page li {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1e2f3e;
+        }
+        #map-home,
+        #map-suppliers {
+            height: 400px;
+            border-radius: 12px;
+            border: 1px solid #d0dbe8;
+            margin: 16px 0;
+        }
+        .sanctions-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            font-size: 14px;
+        }
+        .sanctions-table th {
+            background: #e6edf6;
+            color: #0b2b4a;
+            font-weight: 600;
+            padding: 10px 14px;
+            text-align: left;
+        }
+        .sanctions-table td {
+            padding: 8px 14px;
+            border-bottom: 1px solid #eef3f8;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge.blocked {
+            background: #fde7e7;
+            color: #b00020;
+        }
+        .badge.watch {
+            background: #fff3d6;
+            color: #b27d0c;
+        }
+        .badge.clean {
+            background: #e0f2e6;
+            color: #1e7e34;
+        }
+        .accordion {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            margin: 10px 0;
+        }
+        .accordion-item {
+            border-bottom: 1px solid #e9eef4;
+        }
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+        .accordion-header {
+            padding: 14px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #0b2b4a;
+            display: flex;
+            justify-content: space-between;
+            background: #fafcfd;
+            transition: 0.2s;
+        }
+        .accordion-header:hover {
+            background: #eef5fa;
+        }
+        .accordion-header .arrow {
+            transition: 0.2s;
+        }
+        .accordion-header.open .arrow {
+            transform: rotate(180deg);
+        }
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 20px;
+            background: #ffffff;
+        }
+        .accordion-body.open {
+            max-height: 2000px;
+            padding: 12px 20px 16px;
+        }
+        .accordion-body ul {
+            list-style: none;
+            padding-left: 6px;
+        }
+        .accordion-body ul li {
+            padding: 4px 0;
+            border-bottom: 1px dashed #e0e8f0;
+        }
+        .accordion-body ul li a {
+            color: #1a6ea8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .accordion-body ul li a:hover {
+            text-decoration: underline;
+        }
+        .supplier-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            padding: 16px 20px;
+            margin: 10px 0;
+            border-left: 4px solid #2a7faa;
+        }
+        .supplier-card h4 {
+            color: #0b2b4a;
+            margin-bottom: 6px;
+        }
+        .supplier-card .meta {
+            font-size: 14px;
+            color: #3f5a70;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            margin-right: 6px;
+        }
+        .tag.clean {
+            background: #e0f2e6;
+            color: #1e7e34;
+        }
+        .tag.blocked {
+            background: #fde7e7;
+            color: #b00020;
+        }
+        .tag.watch {
+            background: #fff3d6;
+            color: #b27d0c;
+        }
+        .search-box {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+        .search-box select,
+        .search-box input {
+            padding: 10px 16px;
+            border: 1px solid #ccdae8;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fff;
+            min-width: 220px;
+        }
+        .search-box button {
+            padding: 10px 28px;
+            background: #0b2b4a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .search-box button:hover {
+            background: #1d4468;
+        }
+        .footer {
+            margin-top: auto;
+            padding: 16px 0 8px;
+            border-top: 1px solid #d5e0ea;
+            text-align: center;
+            font-size: 14px;
+            color: #4b687f;
+            flex-shrink: 0;
+        }
+        .footer strong {
+            color: #0b2b4a;
+        }
+
+        /* FAQ */
+        .faq-item {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .faq-question {
+            padding: 16px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #0b2b4a;
+            background: #fafcfd;
+            transition: 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid transparent;
+        }
+        .faq-question:hover {
+            background: #eef5fa;
+        }
+        .faq-question.open {
+            border-bottom-color: #d0dbe8;
+        }
+        .faq-question .arrow {
+            transition: 0.2s;
+            font-size: 18px;
+        }
+        .faq-question.open .arrow {
+            transform: rotate(180deg);
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 20px;
+            background: #ffffff;
+        }
+        .faq-answer.open {
+            max-height: 300px;
+            padding: 12px 20px 16px;
+        }
+        .faq-answer p {
+            margin: 0;
+            color: #1e2f3e;
+        }
+
+        /* Юридическая поддержка */
+        .legal-highlight {
+            background: #eaf2fa;
+            border-left: 5px solid #0b2b4a;
+            padding: 16px 20px;
+            border-radius: 0 10px 10px 0;
+            margin: 12px 0;
+            font-size: 17px;
+            font-weight: 500;
+            color: #0b2b4a;
+        }
+        .legal-steps {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .legal-step {
+            flex: 1;
+            min-width: 180px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            text-align: center;
+            border: 2px solid #0b2b4a;
+        }
+        .legal-step .step-number {
+            display: inline-block;
+            background: #0b2b4a;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            line-height: 40px;
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .legal-step h4 {
+            color: #0b2b4a;
+            margin-bottom: 6px;
+        }
+        .legal-step p {
+            font-size: 14px;
+            color: #3f5a70;
+            margin: 0;
+        }
+        .legal-contact {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 28px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .legal-contact p {
+            margin: 0;
+            font-size: 16px;
+        }
+        .btn-primary {
+            display: inline-block;
+            padding: 12px 36px;
+            background: #0b2b4a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+        }
+        .btn-primary:hover {
+            background: #1d4468;
+        }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-window {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 480px;
+            width: 90%;
+            padding: 36px 32px 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            0% {
+                transform: scale(0.9) translateY(20px);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 28px;
+            font-weight: 300;
+            color: #8a9aa8;
+            cursor: pointer;
+            transition: 0.2s;
+            background: none;
+            border: none;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            color: #0b2b4a;
+        }
+        .modal-window h2 {
+            font-size: 24px;
+            color: #0b2b4a;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e6edf6;
+            padding-bottom: 12px;
+        }
+        .modal-contact-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f4f8;
+            font-size: 16px;
+            color: #1e2f3e;
+        }
+        .modal-contact-item:last-child {
+            border-bottom: none;
+        }
+        .modal-contact-item .icon {
+            font-size: 22px;
+            width: 32px;
+            text-align: center;
+        }
+        .modal-contact-item a {
+            color: #1a6ea8;
+            text-decoration: none;
+        }
+        .modal-contact-item a:hover {
+            text-decoration: underline;
+        }
+        .modal-note {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #e6edf6;
+            font-size: 14px;
+            color: #6b7f93;
+            text-align: center;
+        }
+
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+        .leaflet-control-zoom {
+            display: none !important;
+        }
+        .leaflet-control-layers {
+            display: none !important;
+        }
+
+        /* Статистика */
+        .stats-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+        .stats-grid .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+        .stats-grid .stat-card .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #0b2b4a;
+        }
+        .stats-grid .stat-card .label {
+            font-size: 14px;
+            color: #6b7f93;
+        }
+        .stats-grid .stat-card.blocked .number {
+            color: #b00020;
+        }
+        .stats-grid .stat-card.watch .number {
+            color: #b27d0c;
+        }
+        .stats-grid .stat-card.clean .number {
+            color: #1e7e34;
+        }
+
+        @media (max-width: 720px) {
+            .app {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 8px 12px;
+                justify-content: center;
+                overflow-y: visible;
+            }
+            .sidebar h1 {
+                width: 100%;
+                margin-bottom: 6px;
+                font-size: 18px;
+                border-bottom: none;
+                padding-bottom: 4px;
+            }
+            .sidebar .nav-item {
+                padding: 8px 16px;
+                font-size: 14px;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+            .sidebar .nav-item.active {
+                border-left: none;
+                border-bottom-color: #7fc9ff;
+            }
+            .main {
+                padding: 16px;
+            }
+            #map-home,
+            #map-suppliers {
+                height: 260px;
+            }
+            .legal-steps {
+                flex-direction: column;
+            }
+            .legal-contact {
+                flex-direction: column;
+                text-align: center;
+            }
+            .modal-window {
+                padding: 28px 20px 24px;
+            }
+            .sanctions-table {
+                font-size: 12px;
+            }
+            .sanctions-table th,
+            .sanctions-table td {
+                padding: 6px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <div class="sidebar">
+            <h1>⚛ <span>Атом</span>Аналитик</h1>
+            <div class="nav-item active" data-page="home">Главная</div>
+            <div class="nav-item" data-page="sanctions">Санкции</div>
+            <div class="nav-item" data-page="docs">Документация</div>
+            <div class="nav-item" data-page="suppliers">Поставщики</div>
+            <div class="nav-item" data-page="search">Поиск товара</div>
+            <div class="nav-item" data-page="faq">Вопросы-ответы</div>
+            <div class="nav-item" data-page="legal">Юридическая поддержка</div>
+        </div>
+
+        <div class="main">
+            <!-- ===== ГЛАВНАЯ ===== -->
+            <div id="page-home" class="page active">
+                <h2>О проекте</h2>
+                <p><strong>«Атомный аналитик»</strong> — система для автоматизированного поиска альтернативных поставщиков оборудования для атомной отрасли в условиях санкционных ограничений.</p>
+                <p style="margin-top: 8px;">На карте отмечены ключевые производители. Цвет маркера показывает санкционный статус:</p>
+                <div style="display:flex; gap:16px; flex-wrap:wrap; margin: 8px 0 12px;">
+                    <span><span style="display:inline-block; width:14px; height:14px; background:#c0392b; border-radius:50%;"></span> Под санкциями</span>
+                    <span><span style="display:inline-block; width:14px; height:14px; background:#f39c12; border-radius:50%;"></span> Под риском</span>
+                    <span><span style="display:inline-block; width:14px; height:14px; background:#2980b9; border-radius:50%;"></span> Без санкций</span>
+                </div>
+                <div id="map-home"></div>
+                <div class="stats-grid" id="statsGrid"></div>
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+
+            <!-- ===== САНКЦИИ ===== -->
+            <div id="page-sanctions" class="page">
+                <h2>Санкционные риски</h2>
+                <p>Компании и товары, попавшие под санкции США/ЕС.</p>
+                <div id="sanctionsTableContainer"></div>
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+
+            <!-- ===== ДОКУМЕНТАЦИЯ ===== -->
+            <div id="page-docs" class="page">
+                <h2>Полезные документы</h2>
+
+                <!-- РАЗДЕЛ 1: Документы в сфере атомной энергетики -->
+                <div class="accordion" style="margin-top: 16px;">
+                    <div class="accordion-item">
+                        <div class="accordion-header" data-target="docNuclear">
+                            Документы в сфере атомной энергетики <span class="arrow">▾</span>
+                        </div>
+                        <div class="accordion-body" id="docNuclear">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; padding: 4px 0;">
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/nuclear_seabed.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Договор о запрещении испытаний ядерного оружия в атмосфере, в космическом пространстве и под водой</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/npt.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Договор о нераспространении ядерного оружия 1968 года</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/tlatelolko.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Договор о запрещении ядерного оружия в Латинской Америке 1967 года</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/seabed_wmd_prohibitation.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Договор о запрещении размещения на дне морей и океанов ядерного оружия 1970 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/nucmat.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция о физической защите ядерного материала 1979 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/nuclear_free_pacific.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Договор о безъядерной зоне южной части Тихого океана 1985 года</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/incinfo.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция об оперативном оповещении о ядерной аварии 1986 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/nuchelp.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция о помощи в случае ядерной аварийной ситуации 1986 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/outerspace_nucpower.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Принципы использования ядерных источников энергии в космосе 1992 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/circ449.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция о ядерной безопасности 1994 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/pelindaba.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Пелиндабский договор (Африка) 1995 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/bangkok.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Бангкокский договор (Юго-Восточная Азия) 1995 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/infcirc546.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Объединенная конвенция о безопасности обращения с отработавшим топливом 1997 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/circ567.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция о дополнительном возмещении за ядерный ущерб 1997 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/circ566.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Венская конвенция о гражданской ответственности за ядерный ущерб 1997 года</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/infcirc540.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Типовой дополнительный протокол к соглашениям с МАГАТЭ 1998 года</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/code-04.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Кодекс поведения по безопасности радиоактивных источников 2004 год</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/declarations/nuc_catastrophe_prevention.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Декларация о предотвращении ядерной катастрофы 1981 год</a></div>
+                                <div><a href="https://docs.un.org/ru/a/res/70/57" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Всеобщая декларация о построении мира, свободного от ядерного оружия 2015 год</a></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- РАЗДЕЛ 2: Документы в сфере международной торговли -->
+                <div class="accordion">
+                    <div class="accordion-item">
+                        <div class="accordion-header" data-target="docTrade">
+                            Документы в сфере международной торговли <span class="arrow">▾</span>
+                        </div>
+                        <div class="accordion-body" id="docTrade">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; padding: 4px 0;">
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/arb-rules-r.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Арбитражный регламент ЮНСИТРАЛ 1976 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/conc-rules-r.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Согласительный регламент ЮНСИТРАЛ 1980 г</a></div>
+                                <div><a href="https://uncitral.un.org/sites/default/files/media-documents/uncitral/ru/v1056999-cisg-e-book-r.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция ООН о договорах международной купли-продажи товаров 1980 г</a></div>
+                                <div><a href="https://uncitral.un.org/sites/default/files/media-documents/uncitral/ru/limit_conv_r_ebook.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция об исковой давности в международной купле-продаже товаров 1974 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/credit.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция ООН о независимых гарантиях и резервных аккредитивах 1995 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/consent.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Роттердамская конвенция о процедуре предварительного обоснованного согласия 1998 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/carriage_of_goods.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция ООН о договорах морской перевозки грузов 2008 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/cmr.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция о договоре международной дорожной перевозке грузов (КДПГ) 1956 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/containers72.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Таможенная конвенция, касающаяся контейнеров 1972 г</a></div>
+                                <div><a href="https://vostfwd.com/gamburgskie-pravila-konvenciya-oon-o-morskoj-perevozke-gruzov.php" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция ООН о морской перевозке грузов 1978 г</a></div>
+                                <div><a href="https://docs.cntd.ru/document/902302611" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция о международных железнодорожных перевозках (КОТИФ) 1980 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/pdf/goods.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Конвенция ООН о международных смешанных перевозках грузов 1980 г</a></div>
+                                <div><a href="https://www.un.org/ru/documents/decl_conv/conventions/euro_agreement.shtml" target="_blank" style="color: #1a6ea8; text-decoration: none; display: block; padding: 3px 0; font-size: 14px;">• Европейское соглашение о международной перевозке опасных грузов по внутренним водным путям (ВОПОГ) 2000 г</a></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== РАЗДЕЛ 3: Примеры типовых договоров (АККОРДЕОН) ===== -->
+                <div class="accordion" style="margin-top: 16px;">
+                    <div class="accordion-item">
+                        <div class="accordion-header" data-target="docContracts">
+                            Примеры типовых договоров <span class="arrow">▾</span>
+                        </div>
+                        <div class="accordion-body" id="docContracts">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 8px 0;">
+
+                                <!-- Карточка 1: Договор о сотрудничестве -->
+                                <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; border: 1px solid #e9eef4;">
+                                    <h4 style="color: #0b2b4a; margin-bottom: 8px;">Договор о сотрудничестве</h4>
+                                    <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                        <a href="Dogovor_sotrudnichestva.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; font-size: 14px;">📖 Открыть</a>
+                                        <a href="Dogovor_sotrudnichestva.pdf" download style="color: #1a6ea8; text-decoration: none; font-size: 14px;">⬇️ Скачать</a>
+                                    </div>
+                                </div>
+
+                                <!-- Карточка 2: Политика конфиденциальности -->
+                                <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; border: 1px solid #e9eef4;">
+                                    <h4 style="color: #0b2b4a; margin-bottom: 8px;">Политика конфиденциальности</h4>
+                                    <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                        <a href="Politika_konfidencialnosti.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; font-size: 14px;">📖 Открыть</a>
+                                        <a href="Politika_konfidencialnosti.pdf" download style="color: #1a6ea8; text-decoration: none; font-size: 14px;">⬇️ Скачать</a>
+                                    </div>
+                                </div>
+
+                                <!-- Карточка 3: Договор перевозки -->
+                                <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; border: 1px solid #e9eef4;">
+                                    <h4 style="color: #0b2b4a; margin-bottom: 8px;">Договор перевозки груза</h4>
+                                    <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                        <a href="Dogovor_perevozki.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; font-size: 14px;">📖 Открыть</a>
+                                        <a href="Dogovor_perevozki.pdf" download style="color: #1a6ea8; text-decoration: none; font-size: 14px;">⬇️ Скачать</a>
+                                    </div>
+                                </div>
+
+                                <!-- Карточка 4: Договор купли-продажи -->
+                                <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; border: 1px solid #e9eef4;">
+                                    <h4 style="color: #0b2b4a; margin-bottom: 8px;">Договор купли-продажи</h4>
+                                    <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                        <a href="Dogovor_kupli_prodazhi.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; font-size: 14px;">📖 Открыть</a>
+                                        <a href="Dogovor_kupli_prodazhi.pdf" download style="color: #1a6ea8; text-decoration: none; font-size: 14px;">⬇️ Скачать</a>
+                                    </div>
+                                </div>
+
+                                <!-- Карточка 5: Пользовательский договор -->
+                                <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; border: 1px solid #e9eef4;">
+                                    <h4 style="color: #0b2b4a; margin-bottom: 8px;">Пользовательский договор</h4>
+                                    <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                        <a href="Public_dogovor.pdf" target="_blank" style="color: #1a6ea8; text-decoration: none; font-size: 14px;">📖 Открыть</a>
+                                        <a href="Public_dogovor.pdf" download style="color: #1a6ea8; text-decoration: none; font-size: 14px;">⬇️ Скачать</a>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+
+            <!-- ===== ПОСТАВЩИКИ ===== -->
+            <div id="page-suppliers" class="page">
+                <h2>Информация о поставщиках</h2>
+                <p>Нажмите на маркер на карте, чтобы увидеть подробные данные.</p>
+                <div id="map-suppliers"></div>
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+
+            <!-- ===== ПОИСК ТОВАРА ===== -->
+            <div id="page-search" class="page">
+                <h2>Поиск товара и подбор поставщиков</h2>
+                <p>Введите название товара, категорию или код ТН ВЭД, либо выберите из списка.</p>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Поиск по названию, категории или коду ТН ВЭД..." style="flex:1; min-width:200px; padding:10px 16px; border:1px solid #ccdae8; border-radius:8px; font-size:15px; background:#fff;">
+                    <select id="productSelect" style="min-width:200px;">
+                        <option value="">-- Выберите товар --</option>
+                    </select>
+                    <button id="searchBtn" style="padding:10px 28px; background:#0b2b4a; color:#fff; border:none; border-radius:8px; font-size:15px; cursor:pointer;">Найти</button>
+                    <button id="clearSearchBtn" style="padding:10px 20px; background:#e0e8f0; color:#0b2b4a; border:none; border-radius:8px; font-size:15px; cursor:pointer;">Очистить</button>
+                </div>
+                <div id="searchResults">
+                    <p style="color:#6b7f93;">Введите запрос или выберите товар из списка.</p>
+                </div>
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+
+            <!-- ===== FAQ ===== -->
+            <div id="page-faq" class="page">
+                <h2>Часто задаваемые вопросы</h2>
+                <div class="faq-item">
+                    <div class="faq-question" data-target="faq1">Как система оценивает риски поставщиков? <span class="arrow">▾</span></div>
+                    <div class="faq-answer" id="faq1"><p>Система анализирует открытые санкционные списки (США, ЕС, ООН) и сопоставляет их с базой поставщиков. Итоговый скоринг формируется по трём категориям: санкционный статус, техническая совместимость и наличие допусков.</p></div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" data-target="faq2">Откуда берутся данные о санкциях? <span class="arrow">▾</span></div>
+                    <div class="faq-answer" id="faq2"><p>Данные агрегируются из открытых реестров: BIS Entity List, EU Consolidated List, OFAC SDN List и других официальных источников.</p></div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" data-target="faq3">Что такое риск-скор? <span class="arrow">▾</span></div>
+                    <div class="faq-answer" id="faq3"><p>Риск-скор — это числовая оценка от 0 до 100, где 0 — полностью безопасно, 100 — под прямыми санкциями. Значения 70-99 означают «под риском».</p></div>
+                </div>
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+
+            <!-- ===== ЮРИДИЧЕСКАЯ ПОДДЕРЖКА ===== -->
+            <div id="page-legal" class="page">
+                <h1>Юридическая поддержка партнеров</h1>
+                <h2 style="font-size:22px; margin-top:8px; border-bottom:none; padding-bottom:0;">Суть помощи</h2>
+                <p style="font-size:17px; font-weight:500; color:#0b2b4a;">Сопровождаем партнеров по всем юридическим вопросам: от подписания контракта до разрешения споров. Работаем с зарубежными инвестициями, лицензиями, налогами и таможней.</p>
+                <div class="legal-highlight">Помогаем там, где без юриста не обойтись</div>
+
+                <h2 style="font-size:22px; margin-top:24px; border-bottom:none; padding-bottom:0;">Почему это стало доступнее</h2>
+                <p style="font-size:16px; color:#1e2f3e;">Раньше вам приходилось самим искать юристов в новой стране. Долго, дорого, непонятно.</p>
+                <p style="font-size:16px; color:#1e2f3e; font-weight:600; margin-top:6px;">Теперь всё иначе. Наши партнеры — топовые юридические бюро из разных стран. Мы отобрали лучших во внешнеэкономической деятельности.</p>
+                <p style="font-size:16px; color:#1e2f3e; margin-top:6px;">Вы обращаетесь к нам — мы подключаем нужного эксперта в любой точке мира.</p>
+                <h2 style="font-size:22px; margin-top:24px; border-bottom:none; padding-bottom:0;">Как это работает</h2>
+                <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:center; margin:20px 0;">
+
+                    <!-- Блок 1 -->
+                    <div style="flex:1; min-width:160px; background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center; border:2px solid #0b2b4a;">
+                        <h4 style="color:#0b2b4a; margin-bottom:6px;">Описываете задачу</h4>
+                        <p style="font-size:14px; color:#3f5a70; margin:0;">Страна, контрагент, вопрос.</p>
+                    </div>
+
+                    <div style="font-size:32px; color:#0b2b4a; flex-shrink:0;">→</div>
+
+                    <!-- Блок 2 -->
+                    <div style="flex:1; min-width:160px; background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center; border:2px solid #0b2b4a;">
+                        <h4 style="color:#0b2b4a; margin-bottom:6px;">Мы подбираем юриста</h4>
+                        <p style="font-size:14px; color:#3f5a70; margin:0;">Из нашего пула под ваш запрос.</p>
+                    </div>
+
+                    <div style="font-size:32px; color:#0b2b4a; flex-shrink:0;">→</div>
+
+                    <!-- Блок 3 -->
+                    <div style="flex:1; min-width:160px; background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); text-align:center; border:2px solid #0b2b4a;">
+                        <h4 style="color:#0b2b4a; margin-bottom:6px;">Получаете решение</h4>
+                        <p style="font-size:14px; color:#3f5a70; margin:0;">Документ, консультацию или сопровождение.</p>
+                    </div>
+
+                </div>
+
+                <h2 style="font-size:22px; margin-top:24px; border-bottom:none; padding-bottom:0;">Контакты</h2>
+                <div class="legal-contact">
+                    <p style="font-size:16px; font-weight:500; color:#0b2b4a;">Есть вопрос? Напишите или позвоните — мы вам поможем.</p>
+                    <button id="contactBtn" class="btn-primary">Связаться с нами</button>
+                </div>
+                <div class="footer">
+                    <strong>2026 · Прототип · Команда Импульс</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== МОДАЛЬНОЕ ОКНО ===== -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal-window">
+            <button class="modal-close" id="modalCloseBtn">✕</button>
+            <h2>Наши контакты</h2>
+            <div class="modal-contact-item"><span class="icon">📞</span><span><strong>Телефон:</strong> <a href="tel:+74951234567">+7 (495) 123-45-67</a></span></div>
+            <div class="modal-contact-item"><span class="icon">✉️</span><span><strong>Email:</strong> <a href="mailto:legal@atom-analytic.ru">legal@atom-analytic.ru</a></span></div>
+            <div class="modal-contact-item"><span class="icon">📍</span><span><strong>Адрес:</strong> г. Екатеринбург, ул. Универсиады, д. 7</span></div>
+            <div class="modal-contact-item"><span class="icon">🕐</span><span><strong>Режим работы:</strong> Пн–Пт, 09:00–19:00 (ЕКБ)</span></div>
+            <div class="modal-note">Свяжитесь с нами — поможем подобрать юриста в любой стране!</div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // НОВЫЕ ДАННЫЕ ИЗ JSON (версия 4.0.0)
+        // ============================================================
+        const DATA = {
+            "metadata": {
+                "version": "4.0.0",
+                "generated_at": "2026-07-16T00:28:28.395269",
+                "total_items": 59,
+                "statistics": {
+                    "total": 59,
+                    "products": 17,
+                    "companies": 42,
+                    "blocked": 27,
+                    "watch": 15,
+                    "clean": 17
+                },
+                "sources_summary": {
+                    "Risk Scoring": 23,
+                    "BIS Entity List": 15,
+                    "HS_CATALOG": 14,
+                    "BIS/OFAC/EU": 7,
+                    "CHPL/CCL": 7,
+                    "EU Consolidated List": 4,
+                    "EU Export Control": 1
+                },
+                "data_freshness": {
+                    "hs_catalog": "2026-07-16T00:28:28.395269",
+                    "chpl_ccL": "2026-07-16T00:28:28.395269",
+                    "bis_entity_list": "2026-07-16T00:28:28.395269",
+                    "eu_sanctions": "2026-07-16T00:28:28.395269"
+                }
+            },
+            "products": [{
+                "hs_code": "840110",
+                "name": "Ядерные реакторы",
+                "category": "Ядерное оборудование",
+                "eccn": null,
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["SANCTIONED"],
+                "triggers_ru": ["Прямые санкции BIS/OFAC/ЕС"],
+                "sources": ["HS_CATALOG", "BIS/OFAC/EU"],
+                "sources_ru": ["Каталог ТН ВЭД", "Санкционные списки BIS/OFAC/ЕС"],
+                "alternatives": [
+                    { "name": "ВВЭР-1200", "country": "RU", "country_ru": "Россия", "company": "Росатом / ОКБ Гидропресс",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 5,
+                        "price_usd": 3500000000, "delivery_days": 1825, "notes": "Флагманский реактор поколения III+. 1200 МВт." },
+                    { "name": "HPR-1000 (Хуалун-1)", "country": "CN", "country_ru": "Китай", "company": "CNNC / CGN",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 25,
+                        "price_usd": 3200000000, "delivery_days": 2000,
+                        "notes": "Китайский аналог поколения III+. 1000 МВт." },
+                    { "name": "AP-1000", "country": "US", "country_ru": "США", "company": "Westinghouse Electric Company",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "price_usd": 4200000000, "delivery_days": 0, "notes": "НЕДОСТУПЕН — компания в чёрном списке BIS." }
+                ],
+                "suppliers": [
+                    { "name": "Rosatom", "country": "RU", "country_ru": "Россия", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "Westinghouse Electric Company", "country": "US", "country_ru": "США",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "ОКБ Гидропресс", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 },
+                    { "name": "CNNC", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "CGN", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "840120",
+                "name": "Оборудование для разделения изотопов",
+                "category": "Ядерное оборудование",
+                "eccn": null,
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["SANCTIONED"],
+                "triggers_ru": ["Прямые санкции BIS/OFAC/ЕС"],
+                "sources": ["HS_CATALOG", "BIS/OFAC/EU"],
+                "sources_ru": ["Каталог ТН ВЭД", "Санкционные списки BIS/OFAC/ЕС"],
+                "alternatives": [
+                    { "name": "Газовые центрифуги 9-го поколения", "country": "RU", "country_ru": "Россия",
+                        "company": "Росатом", "sanctions_status": "clean", "sanctions_status_ru": "Доступен",
+                        "risk_score": 5, "price_usd": 15000000, "delivery_days": 730,
+                        "notes": "Мировой лидер по обогащению урана. 40% рынка." },
+                    { "name": "Центрифуги Centrus Energy AC100", "country": "US", "country_ru": "США",
+                        "company": "Centrus Energy", "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован",
+                        "risk_score": 100, "price_usd": 22000000, "delivery_days": 0,
+                        "notes": "НЕДОСТУПЕН — компания в чёрном списке BIS." }
+                ],
+                "suppliers": [
+                    { "name": "Rosatom", "country": "RU", "country_ru": "Россия", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "Centrus Energy", "country": "US", "country_ru": "США", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "840130",
+                "name": "Тепловыделяющие сборки (ТВС)",
+                "category": "Ядерное оборудование",
+                "eccn": null,
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["SANCTIONED"],
+                "triggers_ru": ["Прямые санкции BIS/OFAC/ЕС"],
+                "sources": ["HS_CATALOG", "BIS/OFAC/EU"],
+                "sources_ru": ["Каталог ТН ВЭД", "Санкционные списки BIS/OFAC/ЕС"],
+                "alternatives": [
+                    { "name": "ТВС-Квадрат", "country": "RU", "country_ru": "Россия", "company": "Росатом / НЗХК",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 5,
+                        "price_usd": 12000000, "delivery_days": 365,
+                        "notes": "Топливные сборки для реакторов PWR западного дизайна." },
+                    { "name": "ТВС CF3", "country": "CN", "country_ru": "Китай", "company": "CNNC",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 20,
+                        "price_usd": 10500000, "delivery_days": 400,
+                        "notes": "Китайские топливные сборки для HPR-1000." }
+                ],
+                "suppliers": [
+                    { "name": "Rosatom", "country": "RU", "country_ru": "Россия", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "CNNC", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "НЗХК", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "841111",
+                "name": "Турбореактивные двигатели",
+                "category": "Авиация",
+                "eccn": "9A001",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["CHPL", "SANCTIONED"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)",
+                    "Прямые санкции BIS/OFAC/ЕС"
+                ],
+                "sources": ["HS_CATALOG", "CHPL/CCL", "BIS/OFAC/EU"],
+                "sources_ru": ["Каталог ТН ВЭД", "Список товаров двойного назначения",
+                    "Санкционные списки BIS/OFAC/ЕС"
+                ],
+                "alternatives": [
+                    { "name": "ПД-14", "country": "RU", "country_ru": "Россия", "company": "ОДК-Пермские моторы",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 5,
+                        "price_usd": 8500000, "delivery_days": 180, "notes": "Для МС-21. Сертифицирован. Тяга 14 тс." },
+                    { "name": "АЛ-41Ф1", "country": "RU", "country_ru": "Россия", "company": "ОДК-Сатурн",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 5,
+                        "price_usd": 12000000, "delivery_days": 240, "notes": "Для истребителей Су-57. Военного назначения." }
+                ],
+                "suppliers": [
+                    { "name": "Siemens Energy", "country": "DE", "country_ru": "Германия", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "General Electric", "country": "US", "country_ru": "США", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "ОДК-Пермские моторы", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 },
+                    { "name": "ОДК-Сатурн", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8458",
+                "name": "Станки токарные с ЧПУ",
+                "category": "Станкостроение",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8460",
+                "name": "Станки шлифовальные",
+                "category": "Станкостроение",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8462",
+                "name": "Прессы, гибочные станки",
+                "category": "Станкостроение",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8471",
+                "name": "Компьютеры",
+                "category": "Электроника",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8486",
+                "name": "Оборудование для производства полупроводников",
+                "category": "Полупроводники",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8504",
+                "name": "Трансформаторы",
+                "category": "Электрооборудование",
+                "eccn": "3A001",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 80,
+                "triggers": ["CHPL"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)"],
+                "sources": ["HS_CATALOG", "CHPL/CCL"],
+                "sources_ru": ["Каталог ТН ВЭД", "Список товаров двойного назначения"],
+                "alternatives": [
+                    { "name": "Трансформаторы АО «Трансформ»", "country": "RU", "country_ru": "Россия",
+                        "company": "АО «Трансформ»", "sanctions_status": "clean", "sanctions_status_ru": "Доступен",
+                        "risk_score": 10, "price_usd": 750000, "delivery_days": 120,
+                        "notes": "Силовые трансформаторы до 220 кВ, 63 МВА." },
+                    { "name": "Трансформаторы TBEA", "country": "CN", "country_ru": "Китай", "company": "TBEA Co. Ltd",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 15,
+                        "price_usd": 680000, "delivery_days": 150,
+                        "notes": "Китайский гигант энергомашиностроения, до 500 кВ." },
+                    { "name": "Трансформаторы Hyundai Electric", "country": "KR", "country_ru": "Южная Корея",
+                        "company": "Hyundai Electric", "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением",
+                        "risk_score": 65, "price_usd": 820000, "delivery_days": 180,
+                        "notes": "Риск вторичных санкций США." }
+                ],
+                "suppliers": [
+                    { "name": "Siemens Energy", "country": "DE", "country_ru": "Германия", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "General Electric", "country": "US", "country_ru": "США", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "Schneider Electric SE", "country": "FR", "country_ru": "Франция",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "ABB Ltd", "country": "CH", "country_ru": "Швейцария", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "Siemens AG", "country": "DE", "country_ru": "Германия", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 70 },
+                    { "name": "Schneider Electric", "country": "FR", "country_ru": "Франция", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 70 },
+                    { "name": "Hyundai Electric Co. Ltd", "country": "KR", "country_ru": "Южная Корея",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 70 },
+                    { "name": "CHINT Electric", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "TBEA Co. Ltd", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "АО «Трансформ»", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8536",
+                "name": "КРУЭ (Комплектное распределительное устройство)",
+                "category": "Электрооборудование",
+                "eccn": "3A002",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["CHPL", "SANCTIONED"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)",
+                    "Прямые санкции BIS/OFAC/ЕС"
+                ],
+                "sources": ["HS_CATALOG", "CHPL/CCL", "EU Export Control"],
+                "sources_ru": ["Каталог ТН ВЭД", "Список товаров двойного назначения",
+                    "Экспортный контроль ЕС"
+                ],
+                "alternatives": [
+                    { "name": "КРУЭ CHINT Electric", "country": "CN", "country_ru": "Китай", "company": "CHINT Electric",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 15,
+                        "price_usd": 450000, "delivery_days": 90, "notes": "Элегазовое КРУЭ 110-220 кВ." },
+                    { "name": "КРУЭ TBEA", "country": "CN", "country_ru": "Китай", "company": "TBEA Co. Ltd",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 15,
+                        "price_usd": 520000, "delivery_days": 100, "notes": "Крупный китайский концерн. Полный цикл." },
+                    { "name": "КРУЭ АО «Электроагрегат»", "country": "RU", "country_ru": "Россия",
+                        "company": "АО «Электроагрегат»", "sanctions_status": "clean", "sanctions_status_ru": "Доступен",
+                        "risk_score": 10, "price_usd": 380000, "delivery_days": 60,
+                        "notes": "Отечественный производитель. КРУЭ 35-220 кВ." }
+                ],
+                "suppliers": [
+                    { "name": "Siemens Energy", "country": "DE", "country_ru": "Германия", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "General Electric", "country": "US", "country_ru": "США", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "Schneider Electric SE", "country": "FR", "country_ru": "Франция",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "ABB Ltd", "country": "CH", "country_ru": "Швейцария", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100 },
+                    { "name": "Siemens AG", "country": "DE", "country_ru": "Германия", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 70 },
+                    { "name": "Schneider Electric", "country": "FR", "country_ru": "Франция", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 70 },
+                    { "name": "Hyundai Electric Co. Ltd", "country": "KR", "country_ru": "Южная Корея",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 70 },
+                    { "name": "CHINT Electric", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "TBEA Co. Ltd", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "АО «Электроагрегат»", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "8542",
+                "name": "Интегральные схемы",
+                "category": "Электроника",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "854231",
+                "name": "Микропроцессоры",
+                "category": "Электроника",
+                "eccn": "3A001",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["CHPL", "SANCTIONED"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)",
+                    "Прямые санкции BIS/OFAC/ЕС"
+                ],
+                "sources": ["HS_CATALOG", "CHPL/CCL", "BIS/OFAC/EU"],
+                "sources_ru": ["Каталог ТН ВЭД", "Список товаров двойного назначения",
+                    "Санкционные списки BIS/OFAC/ЕС"
+                ],
+                "alternatives": [
+                    { "name": "Эльбрус-8С", "country": "RU", "country_ru": "Россия", "company": "МЦСТ",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 10,
+                        "price_usd": 85000, "delivery_days": 45, "notes": "Отечественная архитектура. Совместимость ограничена." },
+                    { "name": "Loongson 3A6000", "country": "CN", "country_ru": "Китай", "company": "Loongson Technology",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 45,
+                        "price_usd": 58000, "delivery_days": 60,
+                        "notes": "Китайский аналог. Риск вторичных санкций США." },
+                    { "name": "RISC-V XuanTie C910", "country": "CN", "country_ru": "Китай", "company": "Alibaba T-Head",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 50,
+                        "price_usd": 42000, "delivery_days": 75,
+                        "notes": "Открытая архитектура RISC-V. Требует адаптации ПО." }
+                ],
+                "suppliers": [
+                    { "name": "МЦСТ", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 },
+                    { "name": "Loongson Technology", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "Alibaba T-Head", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "9032",
+                "name": "Регуляторы, контроллеры",
+                "category": "Оптические приборы",
+                "eccn": null,
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": [],
+                "triggers_ru": [],
+                "sources": ["HS_CATALOG"],
+                "sources_ru": ["Каталог ТН ВЭД"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "845811",
+                "name": "Станки токарные с ЧПУ (высокоточные)",
+                "category": null,
+                "eccn": "2B001",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["CHPL", "SANCTIONED"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)",
+                    "Прямые санкции BIS/OFAC/ЕС"
+                ],
+                "sources": ["CHPL/CCL", "BIS/OFAC/EU"],
+                "sources_ru": ["Список товаров двойного назначения", "Санкционные списки BIS/OFAC/ЕС"],
+                "alternatives": [
+                    { "name": "Станки Haas (локализация)", "country": "RU", "country_ru": "Россия",
+                        "company": "ООО «Хаас-Россия»", "sanctions_status": "clean", "sanctions_status_ru": "Доступен",
+                        "risk_score": 5, "price_usd": 120000, "delivery_days": 30,
+                        "notes": "Локализованное производство. Точность ниже оригинала на 15%." },
+                    { "name": "Станки DMG MORI (Китай)", "country": "CN", "country_ru": "Китай",
+                        "company": "DMG MORI China", "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением",
+                        "risk_score": 60, "price_usd": 280000, "delivery_days": 120,
+                        "notes": "Совместное предприятие. Риск прекращения поставок." },
+                    { "name": "Станки Chiron (локализация)", "country": "RU", "country_ru": "Россия",
+                        "company": "ООО «Чирон-Рус»", "sanctions_status": "clean", "sanctions_status_ru": "Доступен",
+                        "risk_score": 10, "price_usd": 95000, "delivery_days": 45,
+                        "notes": "Высокоскоростная обработка, до 5 осей." }
+                ],
+                "suppliers": [
+                    { "name": "ООО «Хаас-Россия»", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 },
+                    { "name": "DMG MORI China", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "ООО «Чирон-Рус»", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "848630",
+                "name": "Фотолитографическое оборудование",
+                "category": null,
+                "eccn": "3B001",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["CHPL", "SANCTIONED"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)",
+                    "Прямые санкции BIS/OFAC/ЕС"
+                ],
+                "sources": ["CHPL/CCL", "BIS/OFAC/EU"],
+                "sources_ru": ["Список товаров двойного назначения", "Санкционные списки BIS/OFAC/ЕС"],
+                "alternatives": [
+                    { "name": "Фотолитограф SMEE (90 нм)", "country": "CN", "country_ru": "Китай", "company": "SMEE",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 70,
+                        "price_usd": 12000000, "delivery_days": 365,
+                        "notes": "Отставание от ASML на 3 поколения. Только 90 нм." },
+                    { "name": "Литограф НИИМЭ (350 нм)", "country": "RU", "country_ru": "Россия", "company": "НИИМЭ",
+                        "sanctions_status": "clean", "sanctions_status_ru": "Доступен", "risk_score": 30,
+                        "price_usd": 4500000, "delivery_days": 270,
+                        "notes": "Для зрелых техпроцессов. Не подходит для чипов < 350 нм." }
+                ],
+                "suppliers": [
+                    { "name": "SMEE", "country": "CN", "country_ru": "Китай", "sanctions_status": "watch",
+                        "sanctions_status_ru": "Под наблюдением", "risk_score": 25 },
+                    { "name": "НИИМЭ", "country": "RU", "country_ru": "Россия", "sanctions_status": "clean",
+                        "sanctions_status_ru": "Доступен", "risk_score": 0 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "hs_code": "901420",
+                "name": "Авиационные гироскопы",
+                "category": null,
+                "eccn": "7A001",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 80,
+                "triggers": ["CHPL"],
+                "triggers_ru": ["Список товаров двойного назначения (CHPL)"],
+                "sources": ["CHPL/CCL"],
+                "sources_ru": ["Список товаров двойного назначения"],
+                "alternatives": [],
+                "suppliers": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }],
+            "companies": [{
+                "name": "Huawei Technologies Co., Ltd.",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Телекоммуникации",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ZTE Corporation",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Телекоммуникации",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "SMIC",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Полупроводники",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Yangtze Memory Technologies Co., Ltd.",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Полупроводники",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "DJI",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Электроника",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Rosatom",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Атомная энергетика",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["840110", "840120", "840130"],
+                "supplies_details": [
+                    { "hs_code": "840110", "name": "Ядерные реакторы", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 },
+                    { "hs_code": "840120", "name": "Оборудование для разделения изотопов",
+                        "category": "Ядерное оборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 2 },
+                    { "hs_code": "840130", "name": "Тепловыделяющие сборки (ТВС)", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Rostec",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Оборонная промышленность",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "United Aircraft Corporation",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Авиастроение",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Siemens Energy",
+                "country": "DE",
+                "country_ru": "Германия",
+                "category": "Энергетика",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["8504", "8536", "841111"],
+                "supplies_details": [
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 },
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 },
+                    { "hs_code": "841111", "name": "Турбореактивные двигатели", "category": "Авиация",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ASML",
+                "country": "NL",
+                "country_ru": "Нидерланды",
+                "category": "Полупроводники",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Westinghouse Electric Company",
+                "country": "US",
+                "country_ru": "США",
+                "category": "Атомная энергетика",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["840110"],
+                "supplies_details": [
+                    { "hs_code": "840110", "name": "Ядерные реакторы", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Centrus Energy",
+                "country": "US",
+                "country_ru": "США",
+                "category": "Атомная энергетика",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["840120"],
+                "supplies_details": [
+                    { "hs_code": "840120", "name": "Оборудование для разделения изотопов",
+                        "category": "Ядерное оборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "General Electric",
+                "country": "US",
+                "country_ru": "США",
+                "category": "Энергетика / Авиация",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["841111", "8504", "8536"],
+                "supplies_details": [
+                    { "hs_code": "841111", "name": "Турбореактивные двигатели", "category": "Авиация",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 },
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 },
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Schneider Electric SE",
+                "country": "FR",
+                "country_ru": "Франция",
+                "category": "Электрооборудование",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["8536", "8504"],
+                "supplies_details": [
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 },
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ABB Ltd",
+                "country": "CH",
+                "country_ru": "Швейцария",
+                "category": "Электрооборудование",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["BIS_ENTITY_LIST"],
+                "triggers_ru": ["Чёрный список BIS (США)"],
+                "sources": ["BIS Entity List"],
+                "sources_ru": ["Чёрный список BIS (США)"],
+                "supplies": ["8504", "8536"],
+                "supplies_details": [
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 },
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Российский фонд прямых инвестиций (РФПИ)",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Финансы",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["EU_SANCTIONS"],
+                "triggers_ru": ["Санкционный список ЕС"],
+                "sources": ["EU Consolidated List"],
+                "sources_ru": ["Консолидированный список ЕС"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "НПО имени Лавочкина",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Космическая промышленность",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["EU_SANCTIONS"],
+                "triggers_ru": ["Санкционный список ЕС"],
+                "sources": ["EU Consolidated List"],
+                "sources_ru": ["Консолидированный список ЕС"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ТПО «Кронштадт»",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Оборонная промышленность",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["EU_SANCTIONS"],
+                "triggers_ru": ["Санкционный список ЕС"],
+                "sources": ["EU Consolidated List"],
+                "sources_ru": ["Консолидированный список ЕС"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "АО «Российские железные дороги»",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Транспорт",
+                "sanctions_status": "blocked",
+                "sanctions_status_ru": "Заблокирован",
+                "risk_score": 100,
+                "triggers": ["EU_SANCTIONS"],
+                "triggers_ru": ["Санкционный список ЕС"],
+                "sources": ["EU Consolidated List"],
+                "sources_ru": ["Консолидированный список ЕС"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Siemens AG",
+                "country": "DE",
+                "country_ru": "Германия",
+                "category": "Промышленность",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 70,
+                "triggers": ["COUNTRY_RISK"],
+                "triggers_ru": ["Страновой риск"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8504", "8536"],
+                "supplies_details": [
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 },
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Schneider Electric",
+                "country": "FR",
+                "country_ru": "Франция",
+                "category": "Электрооборудование",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 70,
+                "triggers": ["COUNTRY_RISK"],
+                "triggers_ru": ["Страновой риск"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8536", "8504"],
+                "supplies_details": [
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 },
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Hyundai Electric Co. Ltd",
+                "country": "KR",
+                "country_ru": "Южная Корея",
+                "category": "Электрооборудование",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 70,
+                "triggers": ["COUNTRY_RISK"],
+                "triggers_ru": ["Страновой риск"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8504", "8536"],
+                "supplies_details": [
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 },
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "MAN SE",
+                "country": "DE",
+                "country_ru": "Германия",
+                "category": "Машиностроение",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 70,
+                "triggers": ["COUNTRY_RISK"],
+                "triggers_ru": ["Страновой риск"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ATOMSTROYEXPORT",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Атомная энергетика",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 70,
+                "triggers": ["COUNTRY_RISK"],
+                "triggers_ru": ["Страновой риск"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": [],
+                "supplies_details": [],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "МЦСТ",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Электроника",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["854231"],
+                "supplies_details": [
+                    { "hs_code": "854231", "name": "Микропроцессоры", "category": "Электроника",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Loongson Technology",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Электроника",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["854231"],
+                "supplies_details": [
+                    { "hs_code": "854231", "name": "Микропроцессоры", "category": "Электроника",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "Alibaba T-Head",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Электроника",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["854231"],
+                "supplies_details": [
+                    { "hs_code": "854231", "name": "Микропроцессоры", "category": "Электроника",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ООО «Хаас-Россия»",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Станкостроение",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["845811"],
+                "supplies_details": [
+                    { "hs_code": "845811", "name": "Станки токарные с ЧПУ (высокоточные)", "category": null,
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "DMG MORI China",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Станкостроение",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["845811"],
+                "supplies_details": [
+                    { "hs_code": "845811", "name": "Станки токарные с ЧПУ (высокоточные)", "category": null,
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ООО «Чирон-Рус»",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Станкостроение",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["845811"],
+                "supplies_details": [
+                    { "hs_code": "845811", "name": "Станки токарные с ЧПУ (высокоточные)", "category": null,
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "SMEE",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Полупроводники",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["848630"],
+                "supplies_details": [
+                    { "hs_code": "848630", "name": "Фотолитографическое оборудование", "category": null,
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "НИИМЭ",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Полупроводники",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["848630"],
+                "supplies_details": [
+                    { "hs_code": "848630", "name": "Фотолитографическое оборудование", "category": null,
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ОДК-Пермские моторы",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Авиастроение",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["841111"],
+                "supplies_details": [
+                    { "hs_code": "841111", "name": "Турбореактивные двигатели", "category": "Авиация",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ОДК-Сатурн",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Авиастроение",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["841111"],
+                "supplies_details": [
+                    { "hs_code": "841111", "name": "Турбореактивные двигатели", "category": "Авиация",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "ОКБ Гидропресс",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Атомная энергетика",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["840110"],
+                "supplies_details": [
+                    { "hs_code": "840110", "name": "Ядерные реакторы", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "CNNC",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Атомная энергетика",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["840110", "840130"],
+                "supplies_details": [
+                    { "hs_code": "840110", "name": "Ядерные реакторы", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 },
+                    { "hs_code": "840130", "name": "Тепловыделяющие сборки (ТВС)", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "CGN",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Атомная энергетика",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["840110"],
+                "supplies_details": [
+                    { "hs_code": "840110", "name": "Ядерные реакторы", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "CHINT Electric",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Электрооборудование",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8536", "8504"],
+                "supplies_details": [
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 },
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "TBEA Co. Ltd",
+                "country": "CN",
+                "country_ru": "Китай",
+                "category": "Электрооборудование",
+                "sanctions_status": "watch",
+                "sanctions_status_ru": "Под наблюдением",
+                "risk_score": 25,
+                "triggers": ["SECONDARY_RISK"],
+                "triggers_ru": ["Риск вторичных санкций"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8536", "8504"],
+                "supplies_details": [
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 },
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "АО «Электроагрегат»",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Электрооборудование",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8536"],
+                "supplies_details": [
+                    { "hs_code": "8536", "name": "КРУЭ (Комплектное распределительное устройство)",
+                        "category": "Электрооборудование", "sanctions_status": "blocked",
+                        "sanctions_status_ru": "Заблокирован", "risk_score": 100, "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "АО «Трансформ»",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Электрооборудование",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["8504"],
+                "supplies_details": [
+                    { "hs_code": "8504", "name": "Трансформаторы", "category": "Электрооборудование",
+                        "sanctions_status": "watch", "sanctions_status_ru": "Под наблюдением", "risk_score": 80,
+                        "alternatives_count": 3 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }, {
+                "name": "НЗХК",
+                "country": "RU",
+                "country_ru": "Россия",
+                "category": "Атомная энергетика",
+                "sanctions_status": "clean",
+                "sanctions_status_ru": "Доступен",
+                "risk_score": 0,
+                "triggers": ["DOMESTIC"],
+                "triggers_ru": ["Отечественный производитель"],
+                "sources": ["Risk Scoring"],
+                "sources_ru": ["Система оценки страновых рисков"],
+                "supplies": ["840130"],
+                "supplies_details": [
+                    { "hs_code": "840130", "name": "Тепловыделяющие сборки (ТВС)", "category": "Ядерное оборудование",
+                        "sanctions_status": "blocked", "sanctions_status_ru": "Заблокирован", "risk_score": 100,
+                        "alternatives_count": 2 }
+                ],
+                "date_added": "2026-07-16T00:28:28.395269",
+                "last_updated": "2026-07-16T00:28:28.395269"
+            }]
+        };
+
+        // ============================================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ СТАТУСОВ
+        // ============================================================
+        function getStatusBadge(status) {
+            const map = {
+                'blocked': '<span class="badge blocked">Заблокирован</span>',
+                'watch': '<span class="badge watch">Под наблюдением</span>',
+                'clean': '<span class="badge clean">Доступен</span>'
+            };
+            return map[status] || status;
+        }
+
+        function getStatusLabel(status) {
+            const map = {
+                'blocked': 'Заблокирован',
+                'watch': 'Под наблюдением',
+                'clean': 'Доступен'
+            };
+            return map[status] || status;
+        }
+
+        function getStatusTag(status) {
+            const map = {
+                'blocked': '<span class="tag blocked">Заблокирован</span>',
+                'watch': '<span class="tag watch">Под наблюдением</span>',
+                'clean': '<span class="tag clean">Доступен</span>'
+            };
+            return map[status] || status;
+        }
+
+        function getColorByStatus(status) {
+            const map = { 'blocked': '#c0392b', 'watch': '#f39c12', 'clean': '#2980b9' };
+            return map[status] || '#95a5a6';
+        }
+
+        // ============================================================
+        // НАВИГАЦИЯ
+        // ============================================================
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = {
+            home: document.getElementById('page-home'),
+            sanctions: document.getElementById('page-sanctions'),
+            docs: document.getElementById('page-docs'),
+            suppliers: document.getElementById('page-suppliers'),
+            search: document.getElementById('page-search'),
+            faq: document.getElementById('page-faq'),
+            legal: document.getElementById('page-legal')
+        };
+
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const pageId = this.dataset.page;
+                navItems.forEach(n => n.classList.remove('active'));
+                this.classList.add('active');
+                Object.values(pages).forEach(p => p.classList.remove('active'));
+                pages[pageId].classList.add('active');
+                if (pageId === 'home') setTimeout(() => homeMap && homeMap.invalidateSize(), 100);
+                if (pageId === 'suppliers') setTimeout(() => suppliersMap && suppliersMap.invalidateSize(), 100);
+            });
+        });
+
+        // ============================================================
+        // ДОКУМЕНТАЦИЯ (АККОРДЕОН)
+        // ============================================================
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const body = document.getElementById(targetId);
+                const isOpen = body.classList.contains('open');
+                document.querySelectorAll('.accordion-body').forEach(b => b.classList.remove('open'));
+                document.querySelectorAll('.accordion-header').forEach(h => h.classList.remove('open'));
+                if (!isOpen) { body.classList.add('open');
+                    this.classList.add('open'); }
+            });
+        });
+
+        // ============================================================
+        // FAQ
+        // ============================================================
+        document.querySelectorAll('.faq-question').forEach(q => {
+            q.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const answer = document.getElementById(targetId);
+                const isOpen = answer.classList.contains('open');
+                document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('open'));
+                document.querySelectorAll('.faq-question').forEach(q => q.classList.remove('open'));
+                if (!isOpen) { answer.classList.add('open');
+                    this.classList.add('open'); }
+            });
+        });
+
+        // ============================================================
+        // МОДАЛЬНОЕ ОКНО
+        // ============================================================
+        const modal = document.getElementById('contactModal');
+        document.getElementById('contactBtn').addEventListener('click', () => { modal.classList.add('active');
+            document.body.style.overflow = 'hidden'; });
+        document.getElementById('modalCloseBtn').addEventListener('click', () => { modal.classList.remove('active');
+            document.body.style.overflow = ''; });
+        modal.addEventListener('click', (e) => { if (e.target === modal) { modal.classList.remove('active');
+                document.body.style.overflow = ''; } });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) { modal
+                    .classList.remove('active');
+                document.body.style.overflow = ''; } });
+
+        // ============================================================
+        // СТАТИСТИКА
+        // ============================================================
+        function renderStats() {
+            const stats = DATA.metadata.statistics || { blocked: 0, watch: 0, clean: 0 };
+            const html = `
+                <div class="stat-card blocked"><div class="number">${stats.blocked || 0}</div><div class="label">Заблокировано</div></div>
+                <div class="stat-card watch"><div class="number">${stats.watch || 0}</div><div class="label">Под наблюдением</div></div>
+                <div class="stat-card clean"><div class="number">${stats.clean || 0}</div><div class="label">Доступно</div></div>
+                <div class="stat-card"><div class="number">${stats.total || DATA.products.length + DATA.companies.length}</div><div class="label">Всего записей</div></div>
+            `;
+            document.getElementById('statsGrid').innerHTML = html;
+        }
+        renderStats();
+
+        // ============================================================
+        // ТАБЛИЦА САНКЦИЙ
+        // ============================================================
+        function renderSanctions() {
+            // Собираем все заблокированные и наблюдаемые записи
+            const allItems = [...DATA.products, ...DATA.companies];
+            const blocked = allItems.filter(i => i.sanctions_status === 'blocked' || i.sanctions_status === 'watch');
+
+            if (blocked.length === 0) {
+                document.getElementById('sanctionsTableContainer').innerHTML = '<p>Нет записей под санкциями.</p>';
+                return;
+            }
+
+            let html = `<table class="sanctions-table">
+                <thead><tr><th>Наименование</th><th>Тип</th><th>Категория</th><th>Статус</th><th>Риск</th></tr></thead><tbody>`;
+
+            blocked.forEach(item => {
+                const typeLabel = item.supplies ? 'Компания' : 'Товар';
+                html += `<tr>
+                    <td><strong>${item.name}</strong></td>
+                    <td>${typeLabel}</td>
+                    <td>${item.category || '—'}</td>
+                    <td>${getStatusBadge(item.sanctions_status)}</td>
+                    <td>${item.risk_score}%</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('sanctionsTableContainer').innerHTML = html;
+        }
+        renderSanctions();
+
+        // ============================================================
+        // КАРТЫ
+        // ============================================================
+        const companyCoords = {
+            'Rosatom': [55.7558, 37.6173],
+            'Siemens Energy': [48.1351, 11.5820],
+            'Westinghouse Electric Company': [40.4406, -79.9959],
+            'General Electric': [42.3601, -71.0589],
+            'Schneider Electric SE': [48.8566, 2.3522],
+            'Hyundai Electric Co. Ltd': [37.5665, 126.9780],
+            'Huawei Technologies Co., Ltd.': [22.5431, 114.0579],
+            'ZTE Corporation': [22.5431, 114.0579],
+            'SMIC': [31.2304, 121.4737],
+            'Yangtze Memory Technologies Co., Ltd.': [30.5928, 114.3055],
+            'DJI': [22.5431, 114.0579],
+            'Rostec': [55.7558, 37.6173],
+            'United Aircraft Corporation': [55.7558, 37.6173],
+            'ASML': [51.4416, 5.4697],
+            'Centrus Energy': [39.0000, -77.1000],
+            'ABB Ltd': [47.3769, 8.5417],
+            'Российский фонд прямых инвестиций (РФПИ)': [55.7558, 37.6173],
+            'НПО имени Лавочкина': [55.7558, 37.6173],
+            'ТПО «Кронштадт»': [55.7558, 37.6173],
+            'АО «Российские железные дороги»': [55.7558, 37.6173],
+            'Siemens AG': [48.1351, 11.5820],
+            'Schneider Electric': [48.8566, 2.3522],
+            'MAN SE': [48.1351, 11.5820],
+            'ATOMSTROYEXPORT': [55.7558, 37.6173],
+            'CNNC': [39.9042, 116.4074],
+            'CGN': [22.5431, 114.0579],
+            'Росатом/ОКБ Гидропресс': [55.7558, 37.6173],
+            'ОДК-Пермские моторы': [58.0105, 56.2502],
+            'ОДК-Сатурн': [57.1500, 39.4167],
+            'АО «Трансформ»': [55.7558, 37.6173],
+            'TBEA Co. Ltd': [43.8256, 87.6168],
+            'CHINT Electric': [30.5928, 114.3055],
+            'МЦСТ': [55.7558, 37.6173],
+            'Loongson Technology': [39.9042, 116.4074],
+            'Alibaba T-Head': [30.5928, 114.3055],
+            'SMEE': [31.2304, 121.4737],
+            'НИИМЭ': [55.7558, 37.6173],
+            'ООО «Хаас-Россия»': [55.7558, 37.6173],
+            'DMG MORI China': [31.2304, 121.4737],
+            'ООО «Чирон-Рус»': [55.7558, 37.6173]
+        };
+
+        function getCoords(name) {
+            for (const [key, coords] of Object.entries(companyCoords)) {
+                if (name.includes(key) || key.includes(name)) return coords;
+            }
+            return [30 + Math.random() * 20, 10 + Math.random() * 40];
+        }
+
+        // Собираем компании из DATA.companies
+        const companies = DATA.companies || [];
+
+        // Главная карта
+        let homeMap = L.map('map-home', { attributionControl: false, zoomControl: false }).setView([30, 20], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(homeMap);
+
+        companies.forEach(comp => {
+            const coords = getCoords(comp.name);
+            const color = getColorByStatus(comp.sanctions_status || 'clean');
+            const label = getStatusLabel(comp.sanctions_status || 'clean');
+            L.circleMarker(coords, { radius: 8, color: color, fillOpacity: 0.7 })
+                .bindPopup(`<strong>${comp.name}</strong><br>Статус: ${label}<br>Риск: ${comp.risk_score || 0}%`)
+                .addTo(homeMap);
+        });
+
+        // Карта поставщиков
+        let suppliersMap = L.map('map-suppliers', { attributionControl: false, zoomControl: false }).setView([30, 20], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(suppliersMap);
+
+        companies.forEach(comp => {
+            const coords = getCoords(comp.name);
+            const color = getColorByStatus(comp.sanctions_status || 'clean');
+            const label = getStatusLabel(comp.sanctions_status || 'clean');
+            const popupContent = `
+                <strong>${comp.name}</strong><br>
+                Страна: ${comp.country_ru || comp.country || '—'}<br>
+                Категория: ${comp.category || '—'}<br>
+                Статус: ${label}<br>
+                Риск: ${comp.risk_score || 0}%
+                ${comp.triggers_ru && comp.triggers_ru.length > 0 ? `<br>${comp.triggers_ru.join(', ')}` : ''}
+            `;
+            L.circleMarker(coords, { radius: 9, color: color, fillOpacity: 0.7 })
+                .bindPopup(popupContent)
+                .addTo(suppliersMap);
+        });
+
+// ============================================================
+// ПОИСК ТОВАРА (прежняя версия)
+// ============================================================
+const productSelect = document.getElementById('productSelect');
+const resultsDiv = document.getElementById('searchResults');
+
+// Получаем товары из DATA.products
+const products = DATA.products || [];
+
+// Заполняем выпадающий список
+products.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.hs_code;
+    opt.textContent = `${p.name} (${p.hs_code})`;
+    productSelect.appendChild(opt);
+});
+
+document.getElementById('searchBtn').addEventListener('click', function() {
+    const id = productSelect.value;
+    if (!id) {
+        resultsDiv.innerHTML = '<p style="color:#b27d0c;">Пожалуйста, выберите товар.</p>';
+        return;
+    }
+    const product = products.find(p => p.hs_code === id);
+    if (!product) {
+        resultsDiv.innerHTML = '<p>Товар не найден.</p>';
+        return;
+    }
+    
+    let html = `<h4>${product.name}</h4>
+        <p><strong>Статус:</strong> ${getStatusBadge(product.sanctions_status)}</p>
+        <p><strong>Риск:</strong> ${product.risk_score}%</p>
+        <p><strong>Категория:</strong> ${product.category || '—'}</p>
+        <p><strong>ECCN:</strong> ${product.eccn || '—'}</p>
+        ${product.triggers_ru && product.triggers_ru.length > 0 ? `<p><strong>Триггеры:</strong> ${product.triggers_ru.join(', ')}</p>` : ''}`;
+
+    if (product.alternatives && product.alternatives.length > 0) {
+        html += '<h5 style="margin-top:12px;">Альтернативы:</h5>';
+        product.alternatives.forEach(alt => {
+            const label = getStatusLabel(alt.sanctions_status);
+            const tag = getStatusTag(alt.sanctions_status);
+            html += `<div class="supplier-card" style="border-left-color: ${getColorByStatus(alt.sanctions_status)};">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                    <div>
+                        <h4 style="margin-bottom:2px;">${alt.name}</h4>
+                        <div class="meta">${alt.country_ru || alt.country} · ${alt.company}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        ${tag}
+                        <div class="meta">Риск: ${alt.risk_score}%</div>
+                    </div>
+                </div>
+                <div style="font-size:13px; color:#3f5a70; margin-top:4px;">
+                    ${alt.price_usd ? ` $${alt.price_usd.toLocaleString()} · ` : ''}
+                    ${alt.delivery_days ? `${alt.delivery_days} дней` : ''}
+                    ${alt.notes ? `<br>${alt.notes}` : ''}
+                </div>
+            </div>`;
+        });
+    } else {
+        html += '<p style="margin-top:12px; color:#6b7f93;">Альтернатив не найдено.</p>';
+    }
+
+    // Поставщики
+    if (product.suppliers && product.suppliers.length > 0) {
+        html += `<h5 style="margin-top:14px; margin-bottom:8px;">Поставщики:</h5>`;
+        product.suppliers.forEach(sup => {
+            const label = getStatusLabel(sup.sanctions_status);
+            const color = getColorByStatus(sup.sanctions_status);
+            html += `<div style="display:inline-block; background:#f0f4f8; border-radius:16px; padding:4px 14px; margin:3px 6px 3px 0; font-size:14px; border-left:3px solid ${color};">
+                ${sup.name} (${sup.country_ru || sup.country}) — ${label}
+            </div>`;
+        });
+    }
+
+    resultsDiv.innerHTML = html;
+});
+
+        // ============================================================
+        // КОРРЕКТИРОВКА КАРТ
+        // ============================================================
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (homeMap) homeMap.invalidateSize();
+                if (suppliersMap) suppliersMap.invalidateSize();
+            }, 400);
+        });
+
+        console.log('Данные загружены:');
+        console.log('Товаров:', DATA.products.length);
+        console.log('Компаний:', DATA.companies.length);
+        console.log('Статистика:', DATA.metadata.statistics);
+    </script>
+</body>
+</html>
